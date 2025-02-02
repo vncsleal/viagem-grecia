@@ -1,101 +1,98 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState } from 'react';
+import TripStats from '@/components/TripStats';
+import { LineChart, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TripView } from '@/components/TripView';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Separator } from '@/components/ui/separator';
+import { Card } from '@/components/ui/card';
+
+type View = 'trip' | 'stats';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [activeView, setActiveView] = useState<View>('trip');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      >
+        <div className="flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 mx-auto">
+          {/* Left side: Title */}
+          <div className="flex items-center gap-4">
+            <h1 className="font-semibold tracking-tight text-lg">Grécia</h1>
+            <p className="font-semibold">Família Leal</p>
+          </div>
+
+          {/* Right side: Navigation buttons */}
+          <Card className="border-none">
+            <nav className="flex items-center p-1">
+              <Button
+                variant={activeView === 'trip' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="relative gap-2"
+                onClick={() => setActiveView('trip')}
+              >
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">Itinerário</span>
+                {activeView === 'trip' && (
+                  <motion.div
+                    className="absolute inset-0 bg-background rounded-md z-[-1]"
+                    layoutId="activeTab"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </Button>
+              <Separator orientation="vertical" className="mx-1 h-6" />
+              <Button
+                variant={activeView === 'stats' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="relative gap-2"
+                onClick={() => setActiveView('stats')}
+              >
+                <LineChart className="w-4 h-4" />
+                <span className="hidden sm:inline">Estatísticas</span>
+                {activeView === 'stats' && (
+                  <motion.div
+                    className="absolute inset-0 bg-background rounded-md z-[-1]"
+                    layoutId="activeTab"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </Button>
+            </nav>
+          </Card>
         </div>
+      </motion.header>
+
+      <main className="flex-1 w-full flex items-center justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeView}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="container py-8 md:py-12 lg:py-16 max-w-7xl"
+          >
+            <div className="space-y-2 mb-12 text-center">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                {activeView === 'trip' ? 'Itinerário' : 'Estatísticas'}
+              </h2>
+              <p className="text-muted-foreground">
+                {activeView === 'trip'
+                  ? 'Planejamento completo da viagem com hospedagens e passeios.'
+                  : 'Visualização de custos e informações da viagem.'}
+              </p>
+            </div>
+            {activeView === 'trip' ? <TripView /> : <TripStats />}
+          </motion.div>
+        </AnimatePresence>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
