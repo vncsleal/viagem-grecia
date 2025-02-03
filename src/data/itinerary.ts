@@ -121,7 +121,6 @@ export const itineraryData: (TravelSegment | Stay)[] = [
 		weather: [
 			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 25/06
 			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 26/06
-			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 27/06
 		],
 	},
 	{
@@ -179,7 +178,6 @@ export const itineraryData: (TravelSegment | Stay)[] = [
 			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 27/06
 			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 28/06
 			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 29/06
-			{ high: 31, low: 21, condition: "sunny", precipitation: 0 }, // 30/06
 		],
 	},
 	{

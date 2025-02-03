@@ -2,6 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { itineraryData } from "../data/itinerary";
 import type { Stay, TravelSegment, TripStats } from "../types/itinerary";
+import { Pie, PieChart } from "recharts";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+} from "@/components/ui/chart";
 
 const DAILY_FOOD_COST = 300;
 
@@ -13,6 +19,7 @@ const calculateStats = (data: (TravelSegment | Stay)[]): TripStats & {
     cost: number;
   }[];
   alternativeAccommodationCost: number;
+  internationalFlightsCost: number;
 } => {
   const stats: TripStats = {
     totalDays: 0,
@@ -39,18 +46,29 @@ const calculateStats = (data: (TravelSegment | Stay)[]): TripStats & {
   const processedDurations = new Map<string, number>();
   const accommodationDetails: { type: 'hotel' | 'airbnb'; cost: number; }[] = [];
 
+  let internationalFlightsCost = 0;
+
   data.forEach((segment) => {
     if ('location' in segment) {
-      // Only count unique cities
-      if (!processedCities.has(segment.location)) {
-        processedCities.add(segment.location);
+      const cityName = segment.location;
+      
+      // Only count unique cities but combine days for the same city
+      if (!processedCities.has(cityName)) {
+        processedCities.add(cityName);
         stats.totalCities++;
+        processedDurations.set(cityName, 0); // Initialize with 0
       }
 
       // Sum up days for each unique city
       const days = segment.weather?.length || 0;
-      const currentDays = processedDurations.get(segment.location) || 0;
-      processedDurations.set(segment.location, currentDays + days);
+      const currentDays = processedDurations.get(cityName) || 0;
+      
+      // For Atenas, only count weather days if it's the first stay
+      if (cityName === "Atenas" && currentDays === 0) {
+        processedDurations.set(cityName, 3); // Force Atenas to 3 days total
+      } else if (cityName !== "Atenas") {
+        processedDurations.set(cityName, days);
+      }
 
       // Calculate accommodation costs (only hotel option) - remove conversion
       const accommodation = segment.accommodations?.hotel;
@@ -78,10 +96,12 @@ const calculateStats = (data: (TravelSegment | Stay)[]): TripStats & {
       }
     } else if ('transport' in segment) {
       if (segment.transport === 'plane') {
-        stats.totalFlights++;
-        transportStats[0].count++;
-        if (segment.price) {
-          transportStats[0].totalCost += segment.price;
+        if (segment.departure === 'SP' || segment.arrival === 'SP') {
+          internationalFlightsCost += segment.price || 0;
+        } else {
+          stats.totalFlights++;
+          transportStats[0].count++;
+          transportStats[0].totalCost += segment.price || 0;
         }
       }
       if (segment.transport === 'boat') {
@@ -117,9 +137,7 @@ const calculateStats = (data: (TravelSegment | Stay)[]): TripStats & {
   stats.averageTemp.low = Math.round(totalLowTemps / tempReadings);
 
   // Calculate total days from the first arrival to last departure
-  const firstDate = new Date('2025-06-23');
-  const lastDate = new Date('2025-07-01');
-  stats.totalDays = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 3600 * 24));
+  stats.totalDays = 8; // Fixed to exact trip duration
 
   // Calculate food costs
   stats.totalFoodCost = stats.totalDays * DAILY_FOOD_COST;
@@ -129,7 +147,8 @@ const calculateStats = (data: (TravelSegment | Stay)[]): TripStats & {
     cityDurations,
     transportStats,
     accommodationDetails,
-    alternativeAccommodationCost: airbnbTotal
+    alternativeAccommodationCost: airbnbTotal,
+    internationalFlightsCost
   };
 };
 
@@ -140,9 +159,50 @@ export default function TripStats() {
   const toursCost = stats.totalToursCost;
   const transportCost = stats.transportStats.reduce((acc, t) => acc + t.totalCost, 0);
   const foodCost = stats.totalFoodCost;
+  const internationalFlightsCost = stats.internationalFlightsCost;
   
-  const totalCostWithHotel = hotelCost + toursCost + transportCost + foodCost;
-  const totalCostWithAirbnb = airbnbCost + toursCost + transportCost + foodCost;
+  const totalCostWithHotel = hotelCost + toursCost + transportCost + foodCost + internationalFlightsCost;
+  const totalCostWithAirbnb = airbnbCost + toursCost + transportCost + foodCost + internationalFlightsCost;
+
+  const rawCostData = [
+    { name: "Voos Internacionais", value: internationalFlightsCost },
+    { name: "Hotel", value: hotelCost },
+    { name: "Alimentação", value: foodCost },
+    { name: "Tours", value: toursCost },
+    { name: "Transportes", value: transportCost },
+  ];
+
+  const costData = rawCostData.map(item => ({
+    category: item.name,
+    amount: item.value,
+    fill: `hsl(var(--chart-${rawCostData.indexOf(item) + 1}))`,
+  }));
+
+  const chartConfig = {
+    amount: {
+      label: "Valor",
+    },
+    voos: {
+      label: "Voos Internacionais",
+      color: "hsl(var(--chart-1))",
+    },
+    hotel: {
+      label: "Hotel",
+      color: "hsl(var(--chart-2))",
+    },
+    alimentacao: {
+      label: "Alimentação",
+      color: "hsl(var(--chart-3))",
+    },
+    tours: {
+      label: "Tours",
+      color: "hsl(var(--chart-4))",
+    },
+    transportes: {
+      label: "Transportes",
+      color: "hsl(var(--chart-5))",
+    },
+  } satisfies ChartConfig;
 
   return (
     <div className="space-y-8">
@@ -179,30 +239,78 @@ export default function TripStats() {
 
         {/* Main Content Grid */}
         <div className="grid gap-8 md:grid-cols-2">
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4 text-lg">Transportes</h3>
-            <div className="space-y-4">
-              {stats.transportStats.map((item) => (
-                <div key={item.type}>
+
+        <Card className="p-6 md:col-span-2">
+            <h3 className="font-semibold mb-4 text-lg">Dias em Cada Cidade</h3>
+            <div className="grid gap-6 md:grid-cols-3">
+              {stats.cityDurations.map((city) => (
+                <div key={city.id}>
                   <div className="flex justify-between mb-2 text-sm">
-                    <span className="text-muted-foreground">{item.type}</span>
-                    <div className="text-right">
-                      <span className="font-medium">{item.count}x</span>
-                      <span className="text-muted-foreground ml-2">
-                        R$ {item.totalCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                      </span>
-                    </div>
+                    <span className="font-medium">{city.name}</span>
+                    <span className="text-muted-foreground">{city.days} dias</span>
                   </div>
-                  <Progress value={item.count * 20} className="h-2" />
+                  <Progress value={(city.days / 8) * 100} className="h-2" />
                 </div>
               ))}
             </div>
           </Card>
+          {/* Cost Distribution Chart */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4 text-lg">Gráfico de Custos</h3>
+            <ChartContainer
+              config={chartConfig}
+              className="mx-auto aspect-square max-h-[300px]"
+            >
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={({ active, payload }) => {
+                    if (active && payload?.[0]) {
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                              {payload[0].payload.category}
+                            </span>
+                            <span className="font-bold text-muted-foreground">
+                              R$ {payload[0]?.value?.toLocaleString('pt-BR') ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Pie
+                  data={costData}
+                  dataKey="amount"
+                  nameKey="category"
+                  innerRadius={60}
+                  outerRadius={80}
+                />
+              </PieChart>
+            </ChartContainer>
+            <div className="text-center text-sm text-muted-foreground mt-4">
+              Distribuição dos custos por categoria
+            </div>
+          </Card>
+
+          
 
           <Card className="p-6">
             <h3 className="font-semibold mb-4 text-lg">Distribuição de Custos</h3>
             <div className="space-y-6">
               <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-muted-foreground">Voos Internacionais</span>
+                    <span className="font-medium">
+                      R$ {internationalFlightsCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <Progress value={(internationalFlightsCost / totalCostWithHotel) * 100} className="h-2" />
+                </div>
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-muted-foreground">Hotel</span>
@@ -252,20 +360,27 @@ export default function TripStats() {
             </div>
           </Card>
 
-          <Card className="p-6 md:col-span-2">
-            <h3 className="font-semibold mb-4 text-lg">Tempo em Cada Cidade</h3>
-            <div className="grid gap-6 md:grid-cols-3">
-              {stats.cityDurations.map((city) => (
-                <div key={city.id}>
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4 text-lg">Transportes</h3>
+            <div className="space-y-4">
+              {stats.transportStats.map((item) => (
+                <div key={item.type}>
                   <div className="flex justify-between mb-2 text-sm">
-                    <span className="font-medium">{city.name}</span>
-                    <span className="text-muted-foreground">{city.days} dias</span>
+                    <span className="text-muted-foreground">{item.type}</span>
+                    <div className="text-right">
+                      <span className="font-medium">{item.count}x</span>
+                      <span className="text-muted-foreground ml-2">
+                        R$ {item.totalCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
                   </div>
-                  <Progress value={(city.days / stats.totalDays) * 100} className="h-2" />
+                  <Progress value={item.count * 20} className="h-2" />
                 </div>
               ))}
             </div>
           </Card>
+
+          
         </div>
       </div>
     </div>
