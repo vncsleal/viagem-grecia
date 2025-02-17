@@ -2,14 +2,15 @@
 
 import React, { useState } from 'react';
 import TripStats from '@/components/TripStats';
-import { LineChart, Calendar } from 'lucide-react';
+import { LineChart, Calendar, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TripView } from '@/components/TripView';
+import { SlideDeckView } from '@/components/SlideDeckView';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Separator } from '@/components/ui/separator';
 import { Card } from '@/components/ui/card';
 
-type View = 'trip' | 'stats';
+type View = 'trip' | 'stats' | 'slides';
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('trip');
@@ -64,6 +65,23 @@ export default function Home() {
                   />
                 )}
               </Button>
+              <Separator orientation="vertical" className="mx-1 h-6" />
+              <Button
+                variant={activeView === 'slides' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="relative gap-2"
+                onClick={() => setActiveView('slides')}
+              >
+                <Presentation className="w-4 h-4" />
+                <span className="hidden sm:inline">Apresentação</span>
+                {activeView === 'slides' && (
+                  <motion.div
+                    className="absolute inset-0 bg-background rounded-md z-[-1]"
+                    layoutId="activeTab"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </Button>
             </nav>
           </Card>
         </div>
@@ -81,15 +99,27 @@ export default function Home() {
           >
             <div className="space-y-2 mb-12 text-center">
               <h2 className="text-2xl font-semibold tracking-tight">
-                {activeView === 'trip' ? 'Itinerário' : 'Estatísticas'}
+                {activeView === 'trip' 
+                  ? 'Itinerário' 
+                  : activeView === 'stats'
+                  ? 'Estatísticas'
+                  : 'Apresentação'}
               </h2>
               <p className="text-muted-foreground">
                 {activeView === 'trip'
                   ? 'Planejamento completo da viagem com hospedagens e passeios.'
-                  : 'Visualização de custos e informações da viagem.'}
+                  : activeView === 'stats'
+                  ? 'Visualização de custos e informações da viagem.'
+                  : 'Visualização em slides do roteiro da viagem.'}
               </p>
             </div>
-            {activeView === 'trip' ? <TripView /> : <TripStats />}
+            {activeView === 'trip' ? (
+              <TripView />
+            ) : activeView === 'stats' ? (
+              <TripStats />
+            ) : (
+              <SlideDeckView />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>

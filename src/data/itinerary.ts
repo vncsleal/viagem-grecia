@@ -7,7 +7,7 @@ export const itineraryData: (TravelSegment | Stay)[] = [
 		departureTime: "22/06 17:50",
 		arrivalTime: "23/06 18:35",
 		transport: "plane",
-		price: 3100,
+		price: 3500,
 		flightUrl: "https://www.google.com/travel/flights/s/ZhpdhQxUtaMSMt5e6",
 		mapUrl: "https://maps.app.goo.gl/Rm6rTzexn3NY2Zu28",
 		mapEmbed:
